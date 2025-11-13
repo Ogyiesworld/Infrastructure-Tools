@@ -1,0 +1,29 @@
+# CSV Output Files
+*.csv
+
+# PowerShell Module Cache
+PSModule/
+
+# Temporary Files
+*.tmp
+*.temp
+*.log
+
+# Sensitive Data
+*.env
+credentials.json
+secrets.json
+*.key
+*.pem
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

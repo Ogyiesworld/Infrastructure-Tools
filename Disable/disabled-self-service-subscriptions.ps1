@@ -20,7 +20,7 @@ Required Modules: MSCommerce
 .\disabled-self-service-subscriptions.ps1
 
 .OUTPUTS
-Creates a CSV file in C:\temp with the naming format: MM-dd-yyyy-disabled-self-service-subscriptions.csv
+Creates a CSV file in the user's Downloads folder with the naming format: MM-dd-yyyy-disabled-self-service-subscriptions.csv
 
 .LINK
 https://docs.microsoft.com/en-us/microsoft-365/commerce/subscriptions/allowselfservicepurchase-powershell
@@ -35,6 +35,13 @@ if (Get-Module -ListAvailable -Name MSCommerce) {
 }
 # Import the MSCommerce module
 import-module MSCommerce
+
+# Create output directory if it doesn't exist
+$outputPath = [System.IO.Path]::Combine([Environment]::GetFolderPath('UserProfile'), 'Downloads')
+if (!(Test-Path -Path $outputPath)) {
+    New-Item -Path $outputPath -ItemType Directory -Force | Out-Null
+    Write-Host "Created output directory: $outputPath" -ForegroundColor Green
+}
 
 # Connect to Microsoft 365 commerce service
 Connect-MSCommerce
@@ -53,5 +60,7 @@ foreach ($product in $products) {
 # List all products that now have self-service purchasing disabled
 Get-MSCommerceProductPolicies -PolicyId AllowSelfServicePurchase | Where-Object { $_.PolicyValue -eq "Disabled" }
 
-# Export the results to a CSV file in C:\temp with the current date in the filename
-Get-MSCommerceProductPolicies -PolicyId AllowSelfServicePurchase | Where-Object { $_.PolicyValue -eq "Disabled" } | Export-Csv -Path "C:\temp\$(get-date -format 'MM-dd-yyyy')-disabled-self-service-subscriptions.csv" -NoTypeInformation
+# Export the results to a CSV file in Downloads folder with the current date in the filename
+$csvPath = Join-Path -Path $outputPath -ChildPath "$(Get-Date -Format 'MM-dd-yyyy')-disabled-self-service-subscriptions.csv"
+Get-MSCommerceProductPolicies -PolicyId AllowSelfServicePurchase | Where-Object { $_.PolicyValue -eq "Disabled" } | Export-Csv -Path $csvPath -NoTypeInformation
+Write-Host "Results exported to: $csvPath" -ForegroundColor Green
