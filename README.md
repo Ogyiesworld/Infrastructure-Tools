@@ -1,4 +1,4 @@
-# Infrastructure Audit Toolkit
+# Infrastructure Toolkit
 
 A collection of PowerShell scripts for auditing and managing Microsoft 365 infrastructure.
 
