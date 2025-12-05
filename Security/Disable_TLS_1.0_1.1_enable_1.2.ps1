@@ -122,5 +122,5 @@ try {
 }
 
 Write-Log "TLS configuration script completed" "INFO"
-Write-Host "\nLog file created at: $logFile" -ForegroundColor Green
-Write-Host "\nA system restart is required for changes to take effect." -ForegroundColor Yellow
+Write-Host "`nLog file created at: $logFile" -ForegroundColor Green
+Write-Host "`nA system restart is required for changes to take effect." -ForegroundColor Yellow
