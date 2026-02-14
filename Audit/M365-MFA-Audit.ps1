@@ -1,8 +1,32 @@
-# M365-MFA-Audit.ps1
-# Microsoft 365 MFA Status Audit Script
-# This script checks the MFA status of all users in a Microsoft 365 tenant
+<#
+.SYNOPSIS
+Microsoft 365 MFA Status Audit Script.
 
-# Make sure the required modules are installed
+.DESCRIPTION
+This script checks the MFA status of all users in a Microsoft 365 tenant.
+It connects to Microsoft Graph, retrieves all users and their authentication
+methods, pulls successful sign-in logs, and exports a detailed report showing
+each user's MFA enrollment status and last sign-in activity.
+
+.NOTES
+File Name      : M365-MFA-Audit.ps1
+Author         : Infrastructure Audit Toolkit
+Prerequisite   : PowerShell 5.1 or later
+                 Microsoft 365 admin credentials
+Required Modules: Microsoft.Graph.Authentication
+                  Microsoft.Graph.Users
+                  Microsoft.Graph.Identity.SignIns
+                  Microsoft.Graph.Reports
+
+.EXAMPLE
+.\Audit\M365-MFA-Audit.ps1
+
+.OUTPUTS
+Creates a CSV file in the user's Downloads folder with the naming format:
+MM-dd-yyyy_MFA_Results.csv
+#>
+
+# Check and install required modules
 $requiredModules = @(
     "Microsoft.Graph.Authentication",
     "Microsoft.Graph.Users",
@@ -12,7 +36,9 @@ $requiredModules = @(
 
 foreach ($module in $requiredModules) {
     if (!(Get-Module -ListAvailable -Name $module)) {
-        Write-Warning "Module $module is not installed. Please install it using: Install-Module $module -Scope CurrentUser"
+        Write-Host "Module $module is not installed. Installing..." -ForegroundColor Yellow
+        Install-Module $module -Scope CurrentUser -Force
+        Write-Host "Module $module installed." -ForegroundColor Green
     }
 }
 
@@ -293,7 +319,7 @@ Write-Host "\nSample Results:" -ForegroundColor Cyan
 $results | Format-Table -AutoSize
 
 # Output to CSV
-$csvPath = Join-Path -Path $outputPath -ChildPath "$(Get-Date -Format 'yyyy-MM-dd')_MFA_Results.csv"
+$csvPath = Join-Path -Path $outputPath -ChildPath "$(Get-Date -Format 'MM-dd-yyyy')_MFA_Results.csv"
 $results | Export-Csv -Path $csvPath -NoTypeInformation
 Write-Host "Results exported to: $csvPath" -ForegroundColor Green
 

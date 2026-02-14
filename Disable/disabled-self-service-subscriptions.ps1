@@ -17,7 +17,7 @@ Prerequisite   : PowerShell 5.1 or later
 Required Modules: MSCommerce
 
 .EXAMPLE
-.\disabled-self-service-subscriptions.ps1
+.\Disable\disabled-self-service-subscriptions.ps1
 
 .OUTPUTS
 Creates a CSV file in the user's Downloads folder with the naming format: MM-dd-yyyy-disabled-self-service-subscriptions.csv
@@ -26,15 +26,13 @@ Creates a CSV file in the user's Downloads folder with the naming format: MM-dd-
 https://docs.microsoft.com/en-us/microsoft-365/commerce/subscriptions/allowselfservicepurchase-powershell
 #>
 
-# Check if required module is installed
-if (Get-Module -ListAvailable -Name MSCommerce) {
-    Write-Host "Module is installed."
-} else {
-    install-module MSCommerce -Scope CurrentUser
-    Write-Host "Module installed."
+# Check and install required module
+if (!(Get-Module -ListAvailable -Name MSCommerce)) {
+    Write-Host "Module MSCommerce is not installed. Installing..." -ForegroundColor Yellow
+    Install-Module MSCommerce -Scope CurrentUser -Force
+    Write-Host "Module MSCommerce installed." -ForegroundColor Green
 }
-# Import the MSCommerce module
-import-module MSCommerce
+Import-Module MSCommerce
 
 # Create output directory if it doesn't exist
 $outputPath = [System.IO.Path]::Combine([Environment]::GetFolderPath('UserProfile'), 'Downloads')

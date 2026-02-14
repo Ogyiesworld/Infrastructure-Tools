@@ -1,27 +1,50 @@
-#  TLS Configuration Script
+<#
+.SYNOPSIS
+Configures TLS settings by disabling TLS 1.0/1.1 and enabling TLS 1.2.
+
+.DESCRIPTION
+This script hardens a Windows server's TLS configuration by disabling the
+deprecated TLS 1.0 and TLS 1.1 protocols and explicitly enabling TLS 1.2.
+It also enables .NET strong cryptography for both 64-bit and 32-bit frameworks.
+Registry backups are created before any changes are made.
+
+.NOTES
+File Name      : Disable_TLS_1.0_1.1_enable_1.2.ps1
+Author         : Infrastructure Audit Toolkit
+Prerequisite   : PowerShell 5.1 or later
+                 Administrator privileges
+                 A system restart is required after running for changes to take effect.
+
+.EXAMPLE
+.\Security\Disable_TLS_1.0_1.1_enable_1.2.ps1
+
+.OUTPUTS
+Creates the following files in the user's Downloads directory:
+- TLS_Configuration_<timestamp>.log                : Execution log
+- TLS_Configuration_Backup_<timestamp>.reg          : SCHANNEL registry backup
+- NET_Framework_Backup_<timestamp>.reg              : .NET Framework registry backup
+- NET_Framework_Wow6432_Backup_<timestamp>.reg      : .NET Framework x86 registry backup (64-bit systems)
+#>
+
 # Check for administrator privileges
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "Administrator privileges required. Please run as Administrator."
     exit 1
 }
 
-# Verify temp directory exists and create log file
-$tempPath = "C:\temp"
-if (-not (Test-Path $tempPath)) {
-    try {
-        New-Item -ItemType Directory -Path $tempPath -Force | Out-Null
-        Write-Host "Created temp directory: $tempPath"
-    } catch {
-        Write-Error "Failed to create temp directory: $($_.Exception.Message)"
-        exit 1
-    }
+# Create output directory
+$outputPath = [System.IO.Path]::Combine([Environment]::GetFolderPath('UserProfile'), 'Downloads')
+if (!(Test-Path -Path $outputPath)) {
+    New-Item -Path $outputPath -ItemType Directory -Force | Out-Null
+    Write-Host "Created output directory: $outputPath" -ForegroundColor Green
 }
 
-$timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
-$logFile = Join-Path $tempPath "TLS_Configuration_$timestamp.log"
+$scriptStartTime = Get-Date -Format "MM-dd-yyyy_HH-mm-ss"
+$logFile = Join-Path $outputPath "TLS_Configuration_$scriptStartTime.log"
 
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
+    $timestamp = Get-Date -Format "MM-dd-yyyy HH:mm:ss"
     $logEntry = "[$timestamp] [$Level] $Message"
     Add-Content -Path $logFile -Value $logEntry
     Write-Host $logEntry
@@ -30,8 +53,8 @@ function Write-Log {
 function Backup-RegistrySettings {
     try {
         Write-Log "Creating registry backup..." "INFO"
-        $backupFile = Join-Path $tempPath "TLS_Configuration_Backup_$timestamp.reg"
-        
+        $backupFile = Join-Path $outputPath "TLS_Configuration_Backup_$scriptStartTime.reg"
+
         # Export SCHANNEL protocols registry key
         $schannelPath = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
         if (Test-Path $schannelPath) {
@@ -41,23 +64,23 @@ function Backup-RegistrySettings {
             Write-Log "SCHANNEL Protocols registry key not found - creating empty backup" "WARNING"
             "Windows Registry Editor Version 5.00" | Out-File -FilePath $backupFile -Encoding UTF8
         }
-        
+
         # Also backup .NET Framework settings
-        $netBackupFile = Join-Path $tempPath "NET_Framework_Backup_$timestamp.reg"
+        $netBackupFile = Join-Path $outputPath "NET_Framework_Backup_$scriptStartTime.reg"
         $netPath = "HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319"
         if (Test-Path $netPath) {
             reg export "HKLM\SOFTWARE\Microsoft\.NetFramework\v4.0.30319" $netBackupFile /y | Out-Null
             Write-Log ".NET Framework backup created: $netBackupFile" "SUCCESS"
         }
-        
+
         # Backup 32-bit .NET Framework settings on 64-bit systems
         $netWowPath = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NetFramework\v4.0.30319"
         if (Test-Path $netWowPath) {
-            $netWowBackupFile = Join-Path $tempPath "NET_Framework_Wow6432_Backup_$timestamp.reg"
+            $netWowBackupFile = Join-Path $outputPath "NET_Framework_Wow6432_Backup_$scriptStartTime.reg"
             reg export "HKLM\SOFTWARE\Wow6432Node\Microsoft\.NetFramework\v4.0.30319" $netWowBackupFile /y | Out-Null
             Write-Log ".NET Framework x86 backup created: $netWowBackupFile" "SUCCESS"
         }
-        
+
     } catch {
         Write-Log "Failed to create registry backup: $($_.Exception.Message)" "ERROR"
         # Continue with script execution even if backup fails
@@ -123,4 +146,5 @@ try {
 
 Write-Log "TLS configuration script completed" "INFO"
 Write-Host "`nLog file created at: $logFile" -ForegroundColor Green
+Write-Host "All output saved to: $outputPath" -ForegroundColor Green
 Write-Host "`nA system restart is required for changes to take effect." -ForegroundColor Yellow
