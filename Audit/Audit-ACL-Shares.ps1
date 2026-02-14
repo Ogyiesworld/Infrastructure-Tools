@@ -1,13 +1,50 @@
-# Audit-ACL-Shares.ps1
-# Comprehensive ACL Audit Script for Data Server
-# This script discovers all shares including federated services and exports detailed ACL information
-# Author: Infrastructure Audit Toolkit
-# Date: $(Get-Date -Format 'yyyy-MM-dd')
+<#
+.SYNOPSIS
+Comprehensive ACL Audit Script for file shares.
 
-#Requires -RunAsAdministrator
+.DESCRIPTION
+This script discovers all SMB shares, administrative shares, DFS namespaces, and
+federated/trusted domain shares on a server. It extracts detailed ACL information
+for each share, analyzes Active Directory group memberships, and exports results
+to CSV files with a summary report.
+
+.NOTES
+File Name      : Audit-ACL-Shares.ps1
+Author         : Infrastructure Audit Toolkit
+Prerequisite   : PowerShell 5.1 or later
+                 Administrator privileges
+Required Modules: ActiveDirectory
+
+.EXAMPLE
+.\Audit\Audit-ACL-Shares.ps1
+
+.OUTPUTS
+Creates the following files in a timestamped subfolder under the user's Downloads directory:
+- Share_ACL_Report.csv          : Summary of all discovered shares
+- Detailed_ACL_Report.csv       : Detailed ACL entries per share
+- ACL_Audit_Log.txt             : Execution log
+- Audit_Summary.md              : Markdown summary report
+#>
+
+# Check for administrator privileges
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Error "Administrator privileges required. Please run as Administrator."
+    exit 1
+}
+
+# Check and install required modules
+$requiredModules = @("ActiveDirectory")
+foreach ($module in $requiredModules) {
+    if (!(Get-Module -ListAvailable -Name $module)) {
+        Write-Host "Module $module is not installed. Installing..." -ForegroundColor Yellow
+        Install-Module $module -Scope CurrentUser -Force
+        Write-Host "Module $module installed." -ForegroundColor Green
+    }
+}
 
 # Configuration
-$OutputPath = "C:\Temp\ACL_Audit_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+$basePath = [System.IO.Path]::Combine([Environment]::GetFolderPath('UserProfile'), 'Downloads')
+$OutputPath = Join-Path -Path $basePath -ChildPath "ACL_Audit_$(Get-Date -Format 'MM-dd-yyyy_HHmmss')"
 $LogPath = "$OutputPath\ACL_Audit_Log.txt"
 $CsvOutput = "$OutputPath\Share_ACL_Report.csv"
 $DetailedCsvOutput = "$OutputPath\Detailed_ACL_Report.csv"
@@ -262,7 +299,7 @@ function Start-ACLAudit {
             ShareTypeValue = $share.ShareType
             CurrentUsers = $share.CurrentUsers
             Availability = $share.Availability
-            AuditDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+            AuditDate = Get-Date -Format 'MM-dd-yyyy HH:mm:ss'
         }
         
         $allShares += $shareInfo
@@ -286,7 +323,7 @@ function Start-ACLAudit {
                         InheritanceFlags = $rule.InheritanceFlags
                         PropagationFlags = $rule.PropagationFlags
                         Owner = $aclInfo.Owner
-                        AuditDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                        AuditDate = Get-Date -Format 'MM-dd-yyyy HH:mm:ss'
                     }
                     
                     # Analyze group membership for groups
@@ -313,7 +350,7 @@ function Start-ACLAudit {
             ShareTypeValue = $share.ShareType
             CurrentUsers = $share.CurrentUsers
             Availability = $share.Availability
-            AuditDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+            AuditDate = Get-Date -Format 'MM-dd-yyyy HH:mm:ss'
         }
         
         $allShares += $shareInfo
@@ -337,7 +374,7 @@ function Start-ACLAudit {
                         InheritanceFlags = $rule.InheritanceFlags
                         PropagationFlags = $rule.PropagationFlags
                         Owner = $aclInfo.Owner
-                        AuditDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                        AuditDate = Get-Date -Format 'MM-dd-yyyy HH:mm:ss'
                     }
                 }
             }
@@ -356,7 +393,7 @@ function Start-ACLAudit {
             ShareTypeValue = "DFS"
             CurrentUsers = $null
             Availability = $dfsShare.State
-            AuditDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+            AuditDate = Get-Date -Format 'MM-dd-yyyy HH:mm:ss'
         }
         
         $allShares += $shareInfo
@@ -380,7 +417,7 @@ function Start-ACLAudit {
                         InheritanceFlags = $rule.InheritanceFlags
                         PropagationFlags = $rule.PropagationFlags
                         Owner = $aclInfo.Owner
-                        AuditDate = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                        AuditDate = Get-Date -Format 'MM-dd-yyyy HH:mm:ss'
                     }
                 }
             }
@@ -402,7 +439,7 @@ function Start-ACLAudit {
     # Generate summary report
     $summaryReport = @"
 # ACL Audit Summary Report
-Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+Generated: $(Get-Date -Format 'MM-dd-yyyy HH:mm:ss')
 
 ## Share Discovery Summary
 - Total SMB Shares: $($smbShares.Count)
@@ -424,14 +461,6 @@ Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
     
     $summaryReport | Out-File -FilePath "$OutputPath\Audit_Summary.md" -Encoding UTF8
     Write-Log "Summary report generated: $OutputPath\Audit_Summary.md"
-}
-
-# Check if running with appropriate modules
-$requiredModules = @("ActiveDirectory")
-foreach ($module in $requiredModules) {
-    if (!(Get-Module -ListAvailable -Name $module)) {
-        Write-Log "Warning: Module $module is not available. Some features may be limited." "WARN"
-    }
 }
 
 # Execute the audit
